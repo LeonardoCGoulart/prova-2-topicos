@@ -24,11 +24,27 @@ async function initialize(){
     return noticias;
 }
 
+async function initializeEmail(){
+    await storage.init();
+    if(await storage.getItem('email') === null || await storage.getItem('email') === undefined || await storage.getItem('email') === 'undefined'){
+        await storage.setItem('email',[
+            // {
+            //     email: 'www.com...1',
+            // } (se quiser tirar o comentario esta sera a primeiro email, caso contrario o primeiro vai ser do cliente)
+        ])
+    }
+    const email = await storage.getItem('email');
+
+    return email;
+}
+
 let noticias = []; // array para usar no sistema (e depois ser persistido)
+let email = []; // array para usar no sistema (e depois ser persistido)
 
 //atualiza aquele array acima (noticias) com base nos dados ja existentes do node-persist
 (async() => {
     noticias = await initialize();
+    email = await initializeEmail();
   })()
 
 //POSTS
@@ -57,6 +73,22 @@ app.post('/noticia', (req, res) => {
     res.send('Noticia adicionada');
 });
 
+//adiciona um email
+app.post('/inscricao', (req, res) => {
+    const theEmail = req.body;
+
+    if(antiFloodEmail(email,theEmail) == false){
+        res.status(500).send('[flood] Email ja existente');
+        return;
+    }
+    email.push(theEmail); // adiciona o email no array do sistema
+    (async() => {
+        await storage.updateItem('email', email); // atualiza o node-persist com base no array do sistema
+      })()
+
+    res.send('Email Adicionado');
+});
+
 
 
 //GETS
@@ -64,6 +96,21 @@ app.post('/noticia', (req, res) => {
 //retorna todas as noticias salvas
 app.get('/noticia', (req, res) => {
     res.send(noticias);
+});
+
+//retorna uma noticia especifica
+app.get('/noticia/:noticiaID', (req, res) => {
+    const noticiaID = parseInt(req.params.noticiaID);
+    if (isNaN(noticiaID)) {
+        res.status(500).send('erro de conversao');
+        return;
+    }
+    const noticia = noticias.find(n => n.ID === noticiaID);
+    if (!noticia) {
+        res.status(500).send('noticia nula/invalida');
+        return;
+    }
+    res.send(noticia);
 });
 
 
@@ -84,4 +131,11 @@ function antiFlood(array,req){
     return true;
 }
 
-
+function antiFloodEmail(array,req){
+    for(let i = 0; i < array.length ; i++){
+        if(array[i].email === req.email){
+            return false;
+        }     
+    }
+    return true;
+}
