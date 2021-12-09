@@ -20,6 +20,7 @@ async function initialize(){
         ])
     }
     const noticias = await storage.getItem('noticias');
+    ID = noticias.length; // atualiza o ID
 
     return noticias;
 }
